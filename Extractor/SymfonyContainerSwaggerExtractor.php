@@ -58,11 +58,16 @@ class SymfonyContainerSwaggerExtractor implements ExtractorInterface
             throw new ExtractionImpossibleException();
         }
 
-        $this->triggerRouteExtraction($source->get('router'), $type, $extractionContext);
+        $this->triggerRouteExtraction($source, $type, $extractionContext);
     }
 
-    private function triggerRouteExtraction(RouterInterface $router, SwaggerSchema $schema, ExtractionContextInterface $extractionContext)
-    {
+    private function triggerRouteExtraction(
+        ContainerInterface $source,
+        SwaggerSchema $schema,
+        ExtractionContextInterface $extractionContext
+    ) {
+        $router = $source->get('router');
+
         foreach ($router->getRouteCollection() as $operationId => $route) {
             /* @var \Symfony\Component\Routing\Route $route */
             if(!($path = $route->getPath())) {
@@ -72,10 +77,18 @@ class SymfonyContainerSwaggerExtractor implements ExtractorInterface
             $controller = explode('::', $route->getDefault('_controller'));
 
             if(count($controller) != 2) {
-                continue;
+                $controllerAsService = explode(':', $route->getDefault('_controller'));
+
+                if (count($controllerAsService) === 2) {
+                    $method = $controllerAsService[1];
+                    $class = get_class($source->get($controllerAsService[0]));
+                } else {
+                    continue;
+                }
+            } else {
+                list($class, $method) = $controller;
             }
 
-            list($class, $method) = $controller;
 
             $reflectionMethod = new \ReflectionMethod($class, $method);
 
