@@ -101,6 +101,7 @@ class ParamConverterExtractor implements ExtractorInterface
         $modelContext = $subContext->getParameter('in-model-context', array());
 
         if ($serializationGroups) {
+
             $modelContext['serializer-groups'] = $serializationGroups;
         }
 
@@ -122,6 +123,7 @@ class ParamConverterExtractor implements ExtractorInterface
     private function getDeserializationGroups(ParamConverter $paramConverter)
     {
         $options = $paramConverter->getOptions();
+
         if (isset($options['deserializationContext']['groups'])) {
             return $options['deserializationContext']['groups'];
         }

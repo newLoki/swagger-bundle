@@ -105,3 +105,9 @@ services:
         arguments: ['@annotations.reader', '@draw.serializer.group_hierarchy']
         tags:
             - { name: swagger.extractor }
+
+    draw_swagger.extractor.service_response_extractor:
+        class: Draw\SwaggerBundle\Extractor\ServiceResponseExtractor
+        arguments: ['@annotations.reader', '@draw.serializer.group_hierarchy']
+        tags:
+            - { name: swagger.extractor }
