@@ -14,6 +14,7 @@ use FOS\RestBundle\Controller\Annotations\View;
 use JMS\Serializer\Exclusion\GroupsExclusionStrategy;
 use Kfz24\Commons\ServiceCallBundle\ServiceResponse\OutgoingServiceResponse;
 use Kfz24\Commons\ServiceCallBundle\ServiceResponse\OutgoingServiceResponseInterface;
+use Kfz24\Library\Swagger\Annotations\ServiceResponse;
 use phpDocumentor\Reflection\DocBlockFactory;
 use phpDocumentor\Reflection\Type;
 use ReflectionMethod;
@@ -54,7 +55,7 @@ class ServiceResponseExtractor implements ExtractorInterface
             return false;
         }
 
-        if (!$this->isServiceResponse($source)) {
+        if (!$this->getServiceResponse($source)) {
             return false;
         }
 
@@ -77,129 +78,41 @@ class ServiceResponseExtractor implements ExtractorInterface
             throw new ExtractionImpossibleException();
         }
 
-        $factory = DocBlockFactory::createInstance();
-        $docBlock = $factory->create($source->getDocComment());
-        $returnTags = $docBlock->getTagsByName('return');
+        $serviceResponse = $this->getServiceResponse($source);
 
-        if (!isset($returnTags[0])) {
-            return false;
-        }
-
-        $returnTag = $returnTags[0];
-        /* @var $returnTag \phpDocumentor\Reflection\DocBlock\Tags\Return_ */
-        $response = new Response();
-        $response->schema = $responseSchema = new Schema();
-        $response->description = $returnTag->getDescription();
-        $response->schema->type = 'object';
-        $type->responses[200] = $response;
-
-        $subContext = $extractionContext->createSubContext();
-        $subContext->setParameter('direction', 'out');
-
-//            $serviceResponse = new \ReflectionClass(OutgoingServiceResponse::class);
-//            $property = $serviceResponse->getProperty('result');
-//            $property->setAccessible(true);
-//            $property->setValue($serviceResponse, new JsonResult(['gabba' => null]));
-        $subContext->setParameter('out-model-context', ['kfz24_service_response']);
-        $extractionContext->getSwagger()->extract(OutgoingServiceResponse::class, $responseSchema, $subContext);
-
-        //        $factory = DocBlockFactory::createInstance();
-//        $docBlock = $factory->create($source->getDocComment());
 //        /* @var $returnTag \phpDocumentor\Reflection\DocBlock\Tags\Return_ */
-//        $returnTag = $docBlock->getTagsByName('return')[0];
-//
-//        $response = new Response();
+        $response = $serviceResponse;
 //        $response->schema = $responseSchema = new Schema();
-//        $response->description = $returnTag->getDescription();
-//        $responseSchema->type = 'object';
-//        $type->responses[200] = $response;
-//
+//        $response->schema->type = 'object';
+        $type->responses[200] = $response;
+        $serviceResponse->getResult();
+
+        $extractionContext->getRootSchema()->addDefinition($serviceResponse->getResult(), $refSchema = new Schema());
+//        $refSchema->type = "object";
+
+//        $type->responses[] = $serviceResponse;
 //        $subContext = $extractionContext->createSubContext();
 //        $subContext->setParameter('direction', 'out');
-//        $serviceResponse = $this->getServiceResponse($source);
-//
-//
-//        $serializerGroups = $serviceResponse->getSerializerGroups();
-//        $modelContext = $subContext->getParameter('out-model-context', []);
-//        $modelContext['serializer-groups'] = $serializerGroups;
-//        $groups = [];
+//        $subContext->setParameter('out-model-context', ['kfz24_service_response']);
 
-//        if($view = $this->getServiceResponse($source)) {
-//            $groups = $view->getSerializerGroups();
-//        }
-//
-//        if (!empty($groups)) {
-//            dump($groups);
-//        }
-
-//        if(empty($groups)) {
-//            $groups = array(GroupsExclusionStrategy::DEFAULT_GROUP);
-//        }
-//
-//        $subContext->setParameter('out-model-context', $modelContext);
-//
-//        $extractionContext->getSwagger()->extract($returnTag->getType(), $responseSchema, $subContext);
-//        $groups = [];
-//
-//        if($view = $this->getServiceResponse($source)) {
-//            $groups = $view->getSerializerGroups();
-//        }
-//
-//        if(empty($groups)) {
-//            $groups = array(GroupsExclusionStrategy::DEFAULT_GROUP);
-//        }
-//
-//        $groups = $this->groupHierarchy->getReachableGroups($groups);
-//
-//        $modelContext = $extractionContext->getParameter('out-model-context', []);
-//        $modelContext['serializer-groups'] = $groups;
-//        $extractionContext->setParameter('out-model-context', $modelContext);
+        $extractionContext->getSwagger()->extract($serviceResponse, $type, $subContext);
     }
 
     /**
      * @param \ReflectionMethod $reflectionMethod
      *
-     * @return View|null
+     * @return ServiceResponseAnnotation
      */
     private function getServiceResponse(ReflectionMethod $reflectionMethod)
     {
-        $outgoingServiceResponse = $this->annotationReader->getMethodAnnotations($reflectionMethod);
-        foreach ($outgoingServiceResponse as $item) {
-            if ($item instanceof View) {
-                return $item;
+        $methodAnnotations = $this->annotationReader->getMethodAnnotations($reflectionMethod);
+
+        foreach ($methodAnnotations as $annotation) {
+            if ($annotation instanceof ServiceResponseAnnotation) {
+                return $annotation;
             }
         }
 
         return null;
-    }
-
-    /**
-     * @param \ReflectionMethod $reflectionMethod
-     *
-     * @return bool
-     */
-    private function isServiceResponse(ReflectionMethod $reflectionMethod)
-    {
-        $factory = DocBlockFactory::createInstance();
-        $docBlock = $factory->create($reflectionMethod->getDocComment());
-        $returnTags = $docBlock->getTagsByName('return');
-
-        if (!isset($returnTags[0])) {
-            return false;
-        }
-
-        $returnTag = $returnTags[0];
-        $returnClass = trim((string) $returnTag);
-        $returnClass = trim($returnClass, '\\');
-
-        if ($returnClass === OutgoingServiceResponse::class) {
-            return true;
-        }
-
-        if ($returnClass === OutgoingServiceResponseInterface::class) {
-            return true;
-        }
-
-        return false;
     }
 }
